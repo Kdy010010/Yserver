@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ysever</title>
+</head>
+<body>
+  <img src="logo.jpg" alt="logo">
+    <style>
+        body {
+            background-color: black;
+            color: powderblue;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+        }
+
+        #logo {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            max-width: 100px;
+            max-height: 100px;
+        }
+
+        #issue-container {
+            background-color: black;
+            padding: 20px;
+            border-radius: 10px;
+        }
+    </style>
+    <div id="room-form">
+        <input id="username_input" placeholder="사용자 이름" />
+        <input id="room_input" placeholder="채팅방 이름" />
+        <button onclick="joinOrCreateRoom()">참여 또는 생성</button>
+        <button onclick="leaveRoom()">나가기</button>
+    </div>
+
+    <ul id="messages"></ul>
+    <form id="form" onsubmit="sendMessage(); return false;">
+        <input id="message_input" autocomplete="off" />
+        <input type="file" id="file_input" />
+        <button>전송</button>
+    </form>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+        var socket = io.connect('http://' + document.domain + ':' + location.port);
+
+        function joinOrCreateRoom() {
+            var usernameInput = document.getElementById('username_input');
+            var roomInput = document.getElementById('room_input');
+            var username = usernameInput.value;
+            var room = roomInput.value;
+
+            if (username && room) {
+                socket.emit('join', {'username': username, 'room': room});
+                usernameInput.disabled = true;
+                roomInput.disabled = true;
+            }
+        }
+
+        function leaveRoom() {
+            var usernameInput = document.getElementById('username_input');
+            var roomInput = document.getElementById('room_input');
+            var username = usernameInput.value;
+            var room = roomInput.value;
+
+            if (username && room) {
+                socket.emit('leave', {'username': username, 'room': room});
+                usernameInput.disabled = false;
+                roomInput.disabled = false;
+            }
+        }
+
+        socket.on('message', function(msg) {
+            var ul = document.getElementById('messages');
+            var li = document.createElement('li');
+            li.appendChild(document.createTextNode(msg));
+            ul.appendChild(li);
+        });
+
+        socket.on('file', function(data) {
+            var ul = document.getElementById('messages');
+            var li = document.createElement('li');
+            var link = document.createElement('a');
+            link.href = data.url;
+            link.target = '_blank';
+            link.appendChild(document.createTextNode(data.filename));
+            li.appendChild(link);
+            ul.appendChild(li);
+        });
+
+        function sendMessage() {
+            var messageInput = document.getElementById('message_input');
+            var fileInput = document.getElementById('file_input');
+            var message = messageInput.value;
+
+            if (fileInput.files.length > 0) {
+                var file = fileInput.files[0];
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    socket.emit('file', {'file': file, 'data': e.target.result, 'filename': file.name});
+                };
+                reader.readAsDataURL(file);
+            } else {
+                socket.emit('message', message);
+            }
+
+            messageInput.value = '';
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>
